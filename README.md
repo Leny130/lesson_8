@@ -64,4 +64,57 @@ END;
 $$ LANGUAGE plpgsql;
 CREATE FUNCTION
 ```
+3 Не знаю что за скрипт со сложным запросом, надеюсь этот подойдет
 
+```
+DO $$
+DECLARE
+    start_time TIMESTAMP;
+    end_time TIMESTAMP;
+BEGIN
+    start_time := clock_timestamp();
+
+    -- Ваш запрос
+    PERFORM * FROM sales WHERE month = 1;
+
+    end_time := clock_timestamp();
+    RAISE NOTICE 'Execution time: %', end_time - start_time;
+END $$;
+NOTICE:  Execution time: 00:00:00.000105
+DO
+```
+C NOLL вообще не понятно
+```
+SELECT *
+FROM sales
+WHERE COALESCE(month, 0) = 1;
+ id | month | sales_amount
+----+-------+--------------
+  1 |     1 |      1000.00
+(1 row)
+```
+
+4
+```
+CREATE OR REPLACE FUNCTION get_total_sales(month_input INT)
+RETURNS DECIMAL AS $$
+BEGIN
+    IF month_input IS NULL THEN
+        month_input := 0;  -- Заменяем NULL на 0
+    END IF;
+
+    RETURN (
+        SELECT SUM(COALESCE(sales_amount, 0))
+        FROM sales
+        WHERE month = month_input
+    );
+END;
+```
+Проверяем
+```
+SELECT get_total_sales(1) AS total_sales_january;
+ total_sales_january
+---------------------
+             1000.00
+(1 row)
+```
