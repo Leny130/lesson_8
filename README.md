@@ -6,115 +6,50 @@ sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y && sudo sh
 ```
 2 Создал таблицу продаж
 ```
-CREATE TABLE sales (
-    id SERIAL PRIMARY KEY,
-    month INT NOT NULL,
-    sales_amount DECIMAL(10, 2) NOT NULL
-);
-CREATE TABLE
-```
-```
-INSERT INTO sales (month, sales_amount)
-VALUES
-    (1, 1000.00),
-    (2, 1200.00),
-    (3, 1500.00),
-    (4, 1300.00),
-    (5, 1600.00),
-    (6, 1400.00),
-    (7, 1700.00),
-    (8, 1800.00),
-    (9, 2000.00),
-    (10, 1900.00),
-    (11, 2100.00),
-    (12, 2200.00);
-INSERT 0 12
-```
-2 Создал функию
-```
-CREATE OR REPLACE FUNCTION get_quarter(month INTEGER)
-RETURNS INTEGER AS $$
-BEGIN
-    IF month BETWEEN 1 AND 4 THEN
-        RETURN 1;  -- Первая треть (январь - апрель)
-    ELSIF month BETWEEN 5 AND 8 THEN
-        RETURN 2;  -- Вторая треть (май - август)
-    ELSIF month BETWEEN 9 AND 12 THEN
-        RETURN 3;  -- Третья треть (сентябрь - декабрь)
-    ELSE
-        RAISE EXCEPTION 'Month must be between 1 and 12';
-    END IF;
-END;
-```
-С использованием CASE
-```
-CREATE OR REPLACE FUNCTION get_quarter(month INTEGER)
-RETURNS INTEGER AS $$
-BEGIN
-    IF month < 1 OR month > 12 THEN
-        RAISE EXCEPTION 'Month must be between 1 and 12';
-    END IF;
+create table sales(
+ id serial,
+ fk_warehouse int,
+ kolvo int,
+ salesdate date default now());
 
-    RETURN CASE
-        WHEN month BETWEEN 1 AND 4 THEN 1  -- Первая треть
-        WHEN month BETWEEN 5 AND 8 THEN 2  -- Вторая треть 
-        WHEN month BETWEEN 9 AND 12 THEN 3  -- Третья треть 
+insert into sales(fk_warehouse, kolvo,salesdate) values (1, 10,'20230915'), (2, 5,'2023-09-14');
+insert into sales(fk_warehouse, kolvo,salesdate) values (1, 10,'20230115'), (2, 5,'2023-05-14');
+insert into sales(fk_warehouse, kolvo,salesdate) values (3, 20,'20231211'), (4, 50,'2023-09-12');
+```
+Создал функцию
+```
+CREATE OR REPLACE FUNCTION test_if(data date) RETURNS int AS $$
+BEGIN
+    RETURN CASE 
+        WHEN EXTRACT(MONTH FROM data) < 5 THEN 1
+        WHEN EXTRACT(MONTH FROM data) < 9 THEN 2
+        ELSE 3
     END;
 END;
 $$ LANGUAGE plpgsql;
-CREATE FUNCTION
-```
-3 Не знаю что за скрипт со сложным запросом, надеюсь этот подойдет
-
-```
-DO $$
-DECLARE
-    start_time TIMESTAMP;
-    end_time TIMESTAMP;
-BEGIN
-    start_time := clock_timestamp();
-
-    -- Ваш запрос
-    PERFORM * FROM sales WHERE month = 1;
-
-    end_time := clock_timestamp();
-    RAISE NOTICE 'Execution time: %', end_time - start_time;
-END $$;
-NOTICE:  Execution time: 00:00:00.000105
-DO
-```
-C NOLL вообще не понятно
-```
-SELECT *
-FROM sales
-WHERE COALESCE(month, 0) = 1;
- id | month | sales_amount
-----+-------+--------------
-  1 |     1 |      1000.00
-(1 row)
 ```
 
-4
-```
-CREATE OR REPLACE FUNCTION get_total_sales(month_input INT)
-RETURNS DECIMAL AS $$
-BEGIN
-    IF month_input IS NULL THEN
-        month_input := 0;  -- Заменяем NULL на 0
-    END IF;
+Проверяю
 
-    RETURN (
-        SELECT SUM(COALESCE(sales_amount, 0))
-        FROM sales
-        WHERE month = month_input
-    );
-END;
 ```
-Проверяем
+SELECT 
+    id,
+    fk_warehouse,
+    kolvo,
+    salesdate,
+    CASE 
+        WHEN EXTRACT(MONTH FROM salesdate) < 5 THEN 'Q1'
+        WHEN EXTRACT(MONTH FROM salesdate) < 9 THEN 'Q2'
+        ELSE 'Q3'
+    END AS quarter
+FROM sales;
 ```
-SELECT get_total_sales(1) AS total_sales_january;
- total_sales_january
----------------------
-             1000.00
-(1 row)
+```
+id	fk_warehouse	kolvo	salesdate	quarter
+1	1	10	2023-09-15	Q3
+2	2	5	2023-09-14	Q3
+3	1	10	2023-01-15	Q1
+4	2	5	2023-05-14	Q2
+5	3	20	2023-12-11	Q3
+6	4	50	2023-09-12	Q3
 ```
